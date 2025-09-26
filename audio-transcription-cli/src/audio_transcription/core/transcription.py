@@ -126,40 +126,58 @@ class WhisperTranscriber:
             logger.info(f"Loading audio data from {audio_path}")
             import librosa
             import numpy as np
-            audio_data, sample_rate = librosa.load(str(audio_path), sr=16000)
+            raw_audio, sample_rate = librosa.load(str(audio_path), sr=16000)
 
-            # Chunk audio to handle long files (30 second chunks)
+            # Enhanced audio preprocessing for better accuracy
+            logger.info("Applying audio preprocessing enhancements")
+            audio_data = self._preprocess_audio(raw_audio, sample_rate)
+
+            # Improved chunking with overlap for better accuracy
             chunk_duration = 30  # seconds
+            overlap_duration = 5   # seconds overlap between chunks
             chunk_samples = chunk_duration * sample_rate
+            overlap_samples = overlap_duration * sample_rate
             audio_length = len(audio_data)
 
-            logger.info(f"Audio duration: {audio_length / sample_rate:.2f}s, processing in {chunk_duration}s chunks")
+            logger.info(f"Audio duration: {audio_length / sample_rate:.2f}s, processing with {chunk_duration}s chunks and {overlap_duration}s overlap")
 
             all_transcriptions = []
+            chunk_timestamps = []
 
-            for i in range(0, audio_length, chunk_samples):
+            # Process chunks with overlap
+            i = 0
+            chunk_num = 1
+            while i < audio_length:
                 chunk_end = min(i + chunk_samples, audio_length)
                 audio_chunk = audio_data[i:chunk_end]
 
                 if len(audio_chunk) < sample_rate * 0.5:  # Skip chunks shorter than 0.5 seconds
-                    continue
+                    break
 
-                chunk_num = i // chunk_samples + 1
-                total_chunks = (audio_length + chunk_samples - 1) // chunk_samples
-                logger.info(f"Processing chunk {chunk_num}/{total_chunks}")
+                total_chunks = max(1, (audio_length - chunk_samples) // (chunk_samples - overlap_samples) + 1)
+                logger.info(f"Processing chunk {chunk_num}/{total_chunks} (samples {i}-{chunk_end})")
+
+                # Enhanced preprocessing for this chunk
+                processed_chunk = self._enhance_chunk_audio(audio_chunk, sample_rate)
 
                 # Generate mel spectrogram for chunk with correct dtype
                 features = self.processor(
-                    audio_chunk,
+                    processed_chunk,
                     sampling_rate=sample_rate,
                     return_tensors="pt"
                 ).input_features.to(self.device, dtype=self.torch_dtype)
 
-                # Generate transcription for chunk
+                # Generate transcription for chunk with improved parameters
+                enhanced_kwargs = generate_kwargs.copy()
+                if chunk_num == 1:
+                    # Special handling for first chunk to improve accuracy
+                    enhanced_kwargs["temperature"] = (0.0, 0.1, 0.2, 0.3)  # Lower temperature for first chunk
+                    enhanced_kwargs["no_speech_threshold"] = 0.4  # Lower threshold for first chunk
+
                 with torch.no_grad():
                     predicted_ids = self.model.generate(
                         features,
-                        **generate_kwargs
+                        **enhanced_kwargs
                     )
 
                 # Decode the transcription
@@ -169,10 +187,25 @@ class WhisperTranscriber:
                 )[0]
 
                 if chunk_transcription.strip():  # Only add non-empty transcriptions
-                    all_transcriptions.append(chunk_transcription.strip())
+                    # Store transcription with timing info for overlap handling
+                    start_time = i / sample_rate
+                    end_time = chunk_end / sample_rate
+                    all_transcriptions.append({
+                        "text": chunk_transcription.strip(),
+                        "start": start_time,
+                        "end": end_time,
+                        "chunk_num": chunk_num
+                    })
+                    chunk_timestamps.append((start_time, end_time))
 
-            # Combine all transcriptions
-            full_transcription = " ".join(all_transcriptions)
+                # Move to next chunk with overlap
+                if chunk_end >= audio_length:
+                    break
+                i += chunk_samples - overlap_samples
+                chunk_num += 1
+
+            # Combine transcriptions with overlap handling
+            full_transcription = self._merge_overlapping_transcriptions(all_transcriptions)
 
             # Format result to match expected structure
             result = {"text": full_transcription}
@@ -194,6 +227,122 @@ class WhisperTranscriber:
                 "model": self.model_size
             }
     
+    def _preprocess_audio(self, audio_data, sample_rate):
+        """Enhanced audio preprocessing for better accuracy."""
+        import librosa
+        import numpy as np
+
+        logger.info("Applying noise reduction and normalization")
+
+        # Apply spectral gating noise reduction
+        try:
+            # Reduce noise using spectral subtraction approach
+            # Compute power spectrum
+            D = librosa.stft(audio_data)
+            magnitude = np.abs(D)
+
+            # Estimate noise from first 0.5 seconds
+            noise_frame_count = int(0.5 * sample_rate / 512)  # 512 is default hop_length
+            noise_profile = np.mean(magnitude[:, :noise_frame_count], axis=1, keepdims=True)
+
+            # Apply spectral subtraction
+            alpha = 2.0  # Over-subtraction factor
+            beta = 0.01  # Residual noise factor
+            enhanced_magnitude = magnitude - alpha * noise_profile
+            enhanced_magnitude = np.maximum(enhanced_magnitude, beta * magnitude)
+
+            # Reconstruct audio
+            enhanced_D = enhanced_magnitude * np.exp(1j * np.angle(D))
+            audio_data = librosa.istft(enhanced_D)
+
+        except Exception as e:
+            logger.warning(f"Noise reduction failed, using original audio: {e}")
+
+        # Apply adaptive normalization
+        # Use RMS-based normalization for consistent loudness
+        rms = np.sqrt(np.mean(audio_data**2))
+        if rms > 0:
+            target_rms = 0.1  # Target RMS level
+            audio_data = audio_data * (target_rms / rms)
+
+        # Apply gentle high-pass filter to remove low-frequency noise
+        try:
+            audio_data = librosa.effects.preemphasis(audio_data)
+        except:
+            logger.warning("Preemphasis failed, skipping")
+
+        # Ensure audio doesn't clip
+        audio_data = np.clip(audio_data, -1.0, 1.0)
+
+        return audio_data
+
+    def _enhance_chunk_audio(self, chunk_audio, sample_rate):
+        """Apply per-chunk audio enhancements."""
+        import librosa
+        import numpy as np
+
+        # Apply gentle compression to even out dynamics
+        # Simple soft compression
+        threshold = 0.5
+        ratio = 4.0
+        above_threshold = np.abs(chunk_audio) > threshold
+
+        compressed = chunk_audio.copy()
+        compressed[above_threshold] = np.sign(chunk_audio[above_threshold]) * (
+            threshold + (np.abs(chunk_audio[above_threshold]) - threshold) / ratio
+        )
+
+        # Apply subtle smoothing to reduce artifacts
+        # Simple moving average filter
+        window_size = min(3, len(compressed))
+        if window_size > 1:
+            compressed = np.convolve(compressed, np.ones(window_size)/window_size, mode='same')
+
+        return compressed
+
+    def _merge_overlapping_transcriptions(self, transcriptions):
+        """Merge overlapping transcriptions intelligently."""
+        if not transcriptions:
+            return ""
+
+        if len(transcriptions) == 1:
+            return transcriptions[0]["text"]
+
+        merged_text = []
+
+        for i, trans in enumerate(transcriptions):
+            text = trans["text"].strip()
+
+            if i == 0:
+                # First chunk - use entirely
+                merged_text.append(text)
+            else:
+                # For subsequent chunks, try to remove overlapping content
+                prev_text = merged_text[-1] if merged_text else ""
+
+                # Simple overlap detection - find common ending/beginning words
+                current_words = text.split()
+                prev_words = prev_text.split()
+
+                if len(current_words) > 0 and len(prev_words) > 0:
+                    # Look for overlap in last few words of previous and first few words of current
+                    max_overlap = min(5, len(current_words), len(prev_words))
+                    overlap_found = 0
+
+                    for j in range(1, max_overlap + 1):
+                        if prev_words[-j:] == current_words[:j]:
+                            overlap_found = j
+
+                    if overlap_found > 0:
+                        # Remove overlapping words from current chunk
+                        text = " ".join(current_words[overlap_found:])
+                        logger.info(f"Detected {overlap_found} word overlap, merging chunks")
+
+                if text.strip():  # Only add if there's remaining content
+                    merged_text.append(text.strip())
+
+        return " ".join(merged_text)
+
     def cleanup(self):
         """Clean up model memory."""
         if self.model:
@@ -205,9 +354,9 @@ class WhisperTranscriber:
         if self.pipe:
             del self.pipe
             self.pipe = None
-        
+
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        
+
         logger.info("WhisperTranscriber cleaned up")
