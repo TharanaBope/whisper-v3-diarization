@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=65.5.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio-transcription-cli"
+version = "0.1.0"
+description = "Audio transcription and speaker diarization CLI using Whisper and WhisperX"
+authors = [{name = "Your Name", email = "your.email@example.com"}]
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10", 
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "transformers>=4.35.0",
+    "accelerate>=0.24.0",
+    "datasets[audio]>=2.14.0",
+    "faster-whisper>=0.9.0",
+    "ctranslate2>=4.4.0",
+    "librosa>=0.10.2",
+    "soundfile>=0.12.1",
+    "pydub>=0.25.1",
+    "mutagen>=1.47.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+audio-transcription = "audio_transcription.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/audio-transcription-cli"
+Repository = "https://github.com/yourusername/audio-transcription-cli"
+Issues = "https://github.com/yourusername/audio-transcription-cli/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+[tool.setuptools.package-data]
+audio_transcription = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
