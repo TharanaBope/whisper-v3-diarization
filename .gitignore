@@ -1,1 +1,60 @@
-prod/
+# Deployment / runtime bundles
+Prod/
+audio/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.class
+
+# Distribution / packaging
+build/
+dist/
+downloads/
+.eggs/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+**/venv/
+**/.venv/
+audio-transcription-cli/venv/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+**/.mypy_cache/
+**/.pytest_cache/
+.pyre/
+.pytype/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+.cache/
+
+# Logs and generated data
+*.log
+audio-transcription-cli/logs/
+audio-transcription-cli/transcriptions/
+audio-transcription-cli/diarizations/
+
+# Environment and secrets
+.env
+.env.*
+*.env
+audio-transcription-cli/.env
+
+# IDE / editor settings
+.vscode/
+.idea/
+*.code-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
