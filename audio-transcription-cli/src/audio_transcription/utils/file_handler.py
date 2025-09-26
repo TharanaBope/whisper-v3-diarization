@@ -73,11 +73,11 @@ class AudioFileHandler:
             
             # Try loading with librosa for deeper validation
             try:
-                y, sr = librosa.load(str(file_path), duration=1.0)  # Load only 1 second
+                y, sr = librosa.load(str(file_path), duration=1.0)  # Load only 1 second for validation
                 if len(y) == 0:
                     validation_results['errors'].append('Empty audio data')
                     return validation_results
-                
+
                 validation_results['sample_rate'] = sr
                 validation_results['channels'] = 1 if y.ndim == 1 else y.shape[0]
                 
@@ -85,8 +85,20 @@ class AudioFileHandler:
                 validation_results['errors'].append(f'Librosa loading error: {str(e)}')
                 return validation_results
             
-            # Check duration limits
-            if validation_results['duration'] < 0.1:
+            # Check duration limits (use librosa's loaded data if mutagen failed to get duration)
+            actual_duration = validation_results['duration']
+            if actual_duration <= 0:
+                # If mutagen couldn't get duration, estimate from loaded sample
+                if len(y) > 0 and sr > 0:
+                    # Estimate total duration by loading without duration limit
+                    try:
+                        y_full, _ = librosa.load(str(file_path), sr=None)
+                        actual_duration = len(y_full) / sr if len(y_full) > 0 else 0
+                        validation_results['duration'] = actual_duration
+                    except:
+                        actual_duration = len(y) / sr  # Fallback to 1-second sample
+
+            if actual_duration < 0.1:
                 validation_results['errors'].append('Audio too short (<0.1s)')
                 return validation_results
             

@@ -58,3 +58,5 @@ audio-transcription-cli/.env
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+.claude/

@@ -37,7 +37,7 @@ class AudioProcessor:
         # Initialize components
         self.file_handler = AudioFileHandler()
         self.transcriber = WhisperTranscriber(model_size, self.device)
-        self.diarizer = WhisperXDiarizer(self.device, hf_token) if hf_token else None
+        self.diarizer = WhisperXDiarizer(self.device, hf_token, model_size) if hf_token else None
         
         logger.info(f"AudioProcessor initialized - Model: {model_size}, Device: {self.device}")
     

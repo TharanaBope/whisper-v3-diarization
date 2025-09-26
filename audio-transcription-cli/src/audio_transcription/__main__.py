@@ -2,5 +2,9 @@
 
 from .cli import app
 
-if __name__ == "__main__":
+def main():
+    """Main entry point function."""
     app()
+
+if __name__ == "__main__":
+    main()
