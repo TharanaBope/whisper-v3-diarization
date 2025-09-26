@@ -60,3 +60,5 @@ audio-transcription-cli/.env
 Thumbs.db
 
 .claude/
+
+Commands.txt
