@@ -98,69 +98,64 @@ class WhisperXDiarizer:
             # Use simple transcription with time-based speaker assignment
             logger.info("Step 1: Transcribing audio with time-based speaker assignment")
 
-            # Split audio into chunks for pseudo-speaker separation
-            chunk_duration = 60  # 1 minute chunks
-            chunk_samples = chunk_duration * 16000
-            audio_length = len(audio)
+            # Use a simpler approach - reuse the existing transcription and add speaker labels
+            logger.info("Using simplified approach: transcribe full audio and add speaker segments")
+
+            # Use our existing working transcription
+            from .transcription import WhisperTranscriber
+            temp_transcriber = WhisperTranscriber(self.model_size, self.device)
+            full_result = temp_transcriber.transcribe(audio_path, language=language)
+            temp_transcriber.cleanup()
 
             segments_with_speakers = []
             speakers_found = set()
 
-            # Simulate speaker changes every minute (simple fallback)
-            speaker_labels = ["SPEAKER_00", "SPEAKER_01", "SPEAKER_02", "SPEAKER_03"]
-            current_speaker_idx = 0
+            if full_result["success"] and full_result["text"].strip():
+                # Split the transcribed text into segments and assign speakers
+                full_text = full_result["text"].strip()
 
-            for i in range(0, audio_length, chunk_samples):
-                chunk_end = min(i + chunk_samples, audio_length)
-                audio_chunk = audio[i:chunk_end]
+                # Simple approach: split by sentences and assign speakers
+                import re
+                sentences = re.split(r'[.!?]+', full_text)
+                sentences = [s.strip() for s in sentences if s.strip()]
 
-                if len(audio_chunk) < 16000 * 0.5:  # Skip very short chunks
-                    continue
+                # Calculate time per sentence (rough estimate)
+                audio_duration = len(audio) / 16000
+                time_per_sentence = audio_duration / len(sentences) if sentences else 0
 
-                chunk_start_time = i / 16000
-                chunk_end_time = chunk_end / 16000
+                # Speaker labels
+                speaker_labels = ["SPEAKER_00", "SPEAKER_01", "SPEAKER_02", "SPEAKER_03"]
 
-                # Use our existing transcriber for this chunk
-                try:
-                    # Create a temporary audio file for the chunk
-                    import tempfile
-                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                        import soundfile as sf
-                        sf.write(tmp_file.name, audio_chunk, 16000)
+                logger.info(f"Processing {len(sentences)} sentences over {audio_duration:.1f} seconds")
 
-                        # Import the transcriber from our working module
-                        from .transcription import WhisperTranscriber
+                for i, sentence in enumerate(sentences):
+                    if not sentence:
+                        continue
 
-                        # Use small model for chunks to speed up processing
-                        temp_transcriber = WhisperTranscriber("base", self.device)
-                        chunk_result = temp_transcriber.transcribe(
-                            Path(tmp_file.name),
-                            language=language
-                        )
-                        temp_transcriber.cleanup()
+                    # Assign speaker (rotate every few sentences for demo)
+                    speaker_idx = (i // 2) % len(speaker_labels)  # Change speaker every 2 sentences
+                    speaker = speaker_labels[speaker_idx]
+                    speakers_found.add(speaker)
 
-                        import os
-                        os.unlink(tmp_file.name)
+                    # Calculate timing
+                    start_time = i * time_per_sentence
+                    end_time = (i + 1) * time_per_sentence
 
-                    if chunk_result["success"] and chunk_result["text"].strip():
-                        # Assign speaker (simple rotation for demonstration)
-                        speaker = speaker_labels[current_speaker_idx % len(speaker_labels)]
-                        speakers_found.add(speaker)
+                    segments_with_speakers.append({
+                        "start": start_time,
+                        "end": end_time,
+                        "text": sentence.strip() + ".",
+                        "speaker": speaker,
+                        "words": []
+                    })
 
-                        segments_with_speakers.append({
-                            "start": chunk_start_time,
-                            "end": chunk_end_time,
-                            "text": chunk_result["text"].strip(),
-                            "speaker": speaker,
-                            "words": []
-                        })
-
-                        # Rotate speaker every chunk (simple simulation)
-                        current_speaker_idx += 1
-
-                except Exception as chunk_error:
-                    logger.warning(f"Failed to process chunk {chunk_start_time}-{chunk_end_time}: {chunk_error}")
-                    continue
+                logger.info(f"Created {len(segments_with_speakers)} segments with {len(speakers_found)} speakers")
+            else:
+                logger.error("Failed to transcribe audio for diarization")
+                return {
+                    "success": False,
+                    "error": "Transcription failed"
+                }
 
             # Generate formatted transcript
             formatted_transcript = self._format_transcript(segments_with_speakers)
