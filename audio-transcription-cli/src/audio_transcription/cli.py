@@ -74,19 +74,25 @@ def transcribe_audio(
         "auto",
         "--device", "-d",
         help="Processing device (auto, cpu, cuda)"
+    ),
+    use_assistant: bool = typer.Option(
+        False,
+        "--use-assistant", "-a",
+        help="Use Distil-Whisper as assistant model for 2-5x speed improvement"
     )
 ):
-    """Transcribe audio files using Whisper."""
+    """Transcribe audio files using Whisper with optional Distil-Whisper assistant model."""
     
     # Validate inputs
     _validate_model_size(model_size)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Initialize processor
+
+    # Initialize processor with assistant model option
     processor = AudioProcessor(
         model_size=model_size,
         device=device,
-        hf_token=config.hf_token
+        hf_token=config.hf_token,
+        use_assistant=use_assistant
     )
     
     # Process files with progress indication
@@ -161,9 +167,14 @@ def diarize_audio(
         "auto",
         "--device", "-d",
         help="Processing device (auto, cpu, cuda)"
+    ),
+    use_assistant: bool = typer.Option(
+        False,
+        "--use-assistant", "-a",
+        help="Use Distil-Whisper as assistant model for 2-5x speed improvement"
     )
 ):
-    """Transcribe with speaker diarization using WhisperX."""
+    """Transcribe with speaker diarization using WhisperX with optional Distil-Whisper assistant."""
     
     if not config.hf_token:
         console.print("❌ [red]HuggingFace token required for speaker diarization![/red]")
@@ -174,12 +185,13 @@ def diarize_audio(
     _validate_model_size(model_size)
     _validate_speaker_counts(min_speakers, max_speakers)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Initialize processor
+
+    # Initialize processor with assistant model option
     processor = AudioProcessor(
         model_size=model_size,
         device=device,
-        hf_token=config.hf_token
+        hf_token=config.hf_token,
+        use_assistant=use_assistant
     )
     
     # Process files with progress indication
@@ -262,9 +274,14 @@ def process_full(
         "auto",
         "--device", "-d",
         help="Processing device"
+    ),
+    use_assistant: bool = typer.Option(
+        False,
+        "--use-assistant", "-a",
+        help="Use Distil-Whisper as assistant model for 2-5x speed improvement"
     )
 ):
-    """Process audio files with both transcription and diarization."""
+    """Process audio files with both transcription and diarization using optional Distil-Whisper assistant."""
     
     # Create output directories
     transcription_dir.mkdir(parents=True, exist_ok=True)
@@ -274,12 +291,13 @@ def process_full(
     _validate_model_size(model_size)
     if min_speakers or max_speakers:
         _validate_speaker_counts(min_speakers, max_speakers)
-    
-    # Initialize processor
+
+    # Initialize processor with assistant model option
     processor = AudioProcessor(
         model_size=model_size,
         device=device,
-        hf_token=config.hf_token
+        hf_token=config.hf_token,
+        use_assistant=use_assistant
     )
     
     # Process files

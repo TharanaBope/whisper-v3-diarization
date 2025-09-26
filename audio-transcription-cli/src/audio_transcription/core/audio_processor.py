@@ -21,25 +21,29 @@ class AudioProcessor:
         self,
         model_size: str = "large-v3",
         device: str = "auto",
-        hf_token: Optional[str] = None
+        hf_token: Optional[str] = None,
+        use_assistant: bool = False
     ):
         """Initialize audio processor.
-        
+
         Args:
             model_size: Whisper model size
             device: Processing device (auto, cpu, cuda)
             hf_token: HuggingFace token for diarization
+            use_assistant: Use Distil-Whisper as assistant model for speed optimization
         """
         self.model_size = model_size
         self.device = self._setup_device(device)
         self.hf_token = hf_token
-        
+        self.use_assistant = use_assistant
+
         # Initialize components
         self.file_handler = AudioFileHandler()
-        self.transcriber = WhisperTranscriber(model_size, self.device)
+        self.transcriber = WhisperTranscriber(model_size, self.device, use_assistant=use_assistant)
         self.diarizer = WhisperXDiarizer(self.device, hf_token, model_size) if hf_token else None
-        
-        logger.info(f"AudioProcessor initialized - Model: {model_size}, Device: {self.device}")
+
+        assistant_info = " with Distil-Whisper assistant" if use_assistant else ""
+        logger.info(f"AudioProcessor initialized - Model: {model_size}, Device: {self.device}{assistant_info}")
     
     def _setup_device(self, device: str) -> str:
         """Setup processing device."""

@@ -13,23 +13,27 @@ logger = logging.getLogger(__name__)
 class WhisperTranscriber:
     """Whisper-based transcription service."""
     
-    def __init__(self, model_size: str = "large-v3", device: str = "cuda"):
+    def __init__(self, model_size: str = "large-v3", device: str = "cuda", use_assistant: bool = False):
         """Initialize Whisper transcriber.
-        
+
         Args:
             model_size: Whisper model size
             device: Processing device
+            use_assistant: Use Distil-Whisper as assistant model for speed optimization
         """
         self.model_size = model_size
         self.device = device
+        self.use_assistant = use_assistant
         self.torch_dtype = torch.float16 if device == "cuda" else torch.float32
-        
+
         # Model and pipeline will be loaded on first use
         self.model = None
+        self.assistant_model = None
         self.processor = None
         self.pipe = None
-        
-        logger.info(f"WhisperTranscriber initialized - Model: {model_size}, Device: {device}")
+
+        assistant_info = " with Distil-Whisper assistant" if use_assistant else ""
+        logger.info(f"WhisperTranscriber initialized - Model: {model_size}, Device: {device}{assistant_info}")
     
     def _load_model(self):
         """Lazy load the Whisper model."""
@@ -46,7 +50,7 @@ class WhisperTranscriber:
                 if self.device == "cuda":
                     self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
                         model_id,
-                        torch_dtype=self.torch_dtype,
+                        dtype=self.torch_dtype,
                         low_cpu_mem_usage=True,
                         use_safetensors=True,
                         attn_implementation="flash_attention_2"
@@ -54,7 +58,7 @@ class WhisperTranscriber:
                 else:
                     self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
                         model_id,
-                        torch_dtype=self.torch_dtype,
+                        dtype=self.torch_dtype,
                         low_cpu_mem_usage=True,
                         use_safetensors=True,
                         attn_implementation="eager"
@@ -64,28 +68,69 @@ class WhisperTranscriber:
                 logger.warning("FlashAttention2 not available, falling back to eager attention")
                 self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
                     model_id,
-                    torch_dtype=self.torch_dtype,
+                    dtype=self.torch_dtype,
                     low_cpu_mem_usage=True,
                     use_safetensors=True,
                     attn_implementation="eager"
                 )
             self.model.to(self.device)
             
+            # Load assistant model if requested
+            if self.use_assistant:
+                try:
+                    assistant_model_id = "distil-whisper/distil-large-v3"
+                    logger.info(f"Loading Distil-Whisper assistant model: {assistant_model_id}")
+
+                    from transformers import AutoModelForCausalLM
+                    self.assistant_model = AutoModelForCausalLM.from_pretrained(
+                        assistant_model_id,
+                        dtype=self.torch_dtype,
+                        low_cpu_mem_usage=True,
+                        use_safetensors=True,
+                        attn_implementation="sdpa"
+                    )
+                    self.assistant_model.to(self.device)
+                    logger.info("Distil-Whisper assistant model loaded successfully")
+
+                except Exception as e:
+                    logger.warning(f"Failed to load assistant model: {e}")
+                    logger.warning("Continuing without assistant model")
+                    self.assistant_model = None
+                    self.use_assistant = False
+
             # Load processor
             self.processor = AutoProcessor.from_pretrained(model_id)
-            
-            # Create pipeline
+
+            # Create pipeline with optional assistant model
+            pipeline_kwargs = {
+                "model": self.model,
+                "tokenizer": self.processor.tokenizer,
+                "feature_extractor": self.processor.feature_extractor,
+                "torch_dtype": self.torch_dtype,
+                "device": self.device,
+                "return_timestamps": True
+            }
+
+            # Add assistant model to generate_kwargs if available
+            generate_kwargs = {}
+            if self.use_assistant and self.assistant_model is not None:
+                generate_kwargs["assistant_model"] = self.assistant_model
+                generate_kwargs["language"] = "en"  # Assistant model optimized for English
+                logger.info("Pipeline configured with Distil-Whisper assistant model")
+
+            # Add generate_kwargs to pipeline_kwargs if available
+            if generate_kwargs:
+                pipeline_kwargs["generate_kwargs"] = generate_kwargs
+
             self.pipe = pipeline(
                 "automatic-speech-recognition",
-                model=self.model,
-                tokenizer=self.processor.tokenizer,
-                feature_extractor=self.processor.feature_extractor,
-                torch_dtype=self.torch_dtype,
-                device=self.device,
-                return_timestamps=True
+                **pipeline_kwargs
             )
-            
-            logger.info("Whisper model loaded successfully")
+
+            model_info = "Whisper model"
+            if self.use_assistant and self.assistant_model is not None:
+                model_info += " with Distil-Whisper assistant"
+            logger.info(f"{model_info} loaded successfully")
             
         except Exception as e:
             logger.error(f"Failed to load Whisper model: {e}")
@@ -345,18 +390,31 @@ class WhisperTranscriber:
 
     def cleanup(self):
         """Clean up model memory."""
-        if self.model:
-            del self.model
-            self.model = None
-        if self.processor:
-            del self.processor
-            self.processor = None
-        if self.pipe:
-            del self.pipe
-            self.pipe = None
+        models_to_cleanup = [
+            (self.model, "main model"),
+            (self.assistant_model, "assistant model"),
+            (self.processor, "processor"),
+            (self.pipe, "pipeline")
+        ]
+
+        for model, name in models_to_cleanup:
+            if model:
+                try:
+                    del model
+                    logger.debug(f"Cleaned up {name}")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up {name}: {e}")
+
+        self.model = None
+        self.assistant_model = None
+        self.processor = None
+        self.pipe = None
 
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        logger.info("WhisperTranscriber cleaned up")
+        model_info = "WhisperTranscriber"
+        if self.use_assistant:
+            model_info += " (with assistant model)"
+        logger.info(f"{model_info} cleaned up")
