@@ -168,31 +168,33 @@ class WhisperXDiarizer:
             logger.info(f"Step 4/5: Performing speaker diarization")
             if self.diarize_model is None:
                 # Try to load the diarization model with proper error handling
-                # Use speaker-diarization@2.1 for better compatibility with pyannote.audio 3.x
+                # Use speaker-diarization-3.1 which is designed for pyannote.audio 3.x
+                # This version removes problematic onnxruntime usage and runs in pure PyTorch
                 try:
                     self.diarize_model = whisperx.DiarizationPipeline(
-                        model_name="pyannote/speaker-diarization@2.1",  # Use stable 2.1 version for compatibility
+                        model_name="pyannote/speaker-diarization-3.1",  # Native v3.1 model for pyannote.audio 3.x
                         use_auth_token=self.hf_token,
                         device=self.device
                     )
-                    logger.info("Diarization pipeline loaded successfully (pyannote/speaker-diarization@2.1)")
+                    logger.info("Diarization pipeline loaded successfully (pyannote/speaker-diarization-3.1)")
                 except Exception as e:
                     logger.error(f"Failed to load diarization pipeline: {e}")
                     # Try alternative import path with explicit model version
                     try:
                         from whisperx.diarize import DiarizationPipeline
                         self.diarize_model = DiarizationPipeline(
-                            model_name="pyannote/speaker-diarization@2.1",  # Use stable 2.1 version
+                            model_name="pyannote/speaker-diarization-3.1",  # Native v3.1 model
                             use_auth_token=self.hf_token,
                             device=self.device
                         )
-                        logger.info("Diarization pipeline loaded via alternative import (pyannote/speaker-diarization@2.1)")
+                        logger.info("Diarization pipeline loaded via alternative import (pyannote/speaker-diarization-3.1)")
                     except Exception as e2:
                         logger.error(f"Alternative import also failed: {e2}")
                         raise RuntimeError(
                             "Failed to load diarization pipeline. "
                             "Please ensure pyannote.audio is installed and you have accepted "
-                            "the terms at: https://huggingface.co/pyannote/speaker-diarization"
+                            "the terms at: https://huggingface.co/pyannote/speaker-diarization-3.1 "
+                            "and https://huggingface.co/pyannote/segmentation-3.0"
                         )
 
             # Run diarization with optional speaker count constraints
