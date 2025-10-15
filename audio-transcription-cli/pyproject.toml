@@ -6,8 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "audio-transcription-cli"
 version = "0.1.0"
 description = "Audio transcription and speaker diarization CLI using Whisper and WhisperX"
-authors = [{name = "Your Name", email = "your.email@example.com"}]
-license = {file = "LICENSE"}
+authors = [{name = "TharanaBope"}]
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
@@ -53,9 +52,9 @@ dev = [
 audio-transcription = "audio_transcription.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/audio-transcription-cli"
-Repository = "https://github.com/yourusername/audio-transcription-cli"
-Issues = "https://github.com/yourusername/audio-transcription-cli/issues"
+Homepage = "https://github.com/TharanaBope/transcribe-backend"
+Repository = "https://github.com/TharanaBope/transcribe-backend"
+Issues = "https://github.com/TharanaBope/transcribe-backend/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

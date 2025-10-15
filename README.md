@@ -60,8 +60,8 @@ brew install ffmpeg
 ### Step 2: Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/transcribe-backend.git
-cd transcribe-backend/cli
+git clone https://github.com/TharanaBope/transcribe-backend.git
+cd transcribe-backend/audio-transcription-cli
 ```
 
 ### Step 3: Create Virtual Environment
@@ -230,13 +230,13 @@ Maximum file size: 500MB (configurable in `src/audio_transcription/utils/file_ha
 If you encounter MP3 format issues:
 
 ```bash
-python cli/scripts/convert_mp3_to_wav.py cli/examples/sample.mp3
+python convert_mp3_to_wav.py audio/sample.mp3
 ```
 
 Or use FFmpeg directly:
 
 ```bash
-ffmpeg -i cli/examples/sample.mp3 -ar 16000 cli/examples/sample.wav
+ffmpeg -i audio/sample.mp3 -ar 16000 audio/sample.wav
 ```
 
 ### Debug Audio Files
@@ -244,8 +244,7 @@ ffmpeg -i cli/examples/sample.mp3 -ar 16000 cli/examples/sample.wav
 Test audio file validity:
 
 ```bash
-cd cli
-python scripts/debug_audio.py
+python debug_audio.py
 ```
 
 ### Batch Processing
@@ -253,7 +252,7 @@ python scripts/debug_audio.py
 Process multiple audio files:
 
 ```bash
-for file in cli/examples/*.wav; do
+for file in audio/*.wav; do
     audio-transcription diarize "$file" --min-speakers 2 --max-speakers 4
 done
 ```
@@ -261,7 +260,7 @@ done
 ### Custom Output Directory
 
 ```bash
-audio-transcription transcribe cli/examples/sample.wav \
+audio-transcription transcribe audio/sample.wav \
   --output-dir ./my_transcriptions \
   --model large-v3
 ```
@@ -272,34 +271,29 @@ audio-transcription transcribe cli/examples/sample.wav \
 
 ```
 transcribe-backend/
-├── README.md                    # Main documentation
-├── LICENSE                      # MIT License
-├── .gitignore                  # Git ignore rules
-├── docs/                       # Documentation
-│   └── DIARIZATION_IMPLEMENTATION.md
-└── cli/                        # CLI application
-    ├── .env.example           # Environment template
-    ├── README.md              # CLI-specific docs
-    ├── pyproject.toml        # Package configuration
-    ├── requirements.txt      # Dependencies
+├── README.md                          # Main documentation
+├── LICENSE                            # MIT License
+├── .gitignore                        # Git ignore rules
+├── DIARIZATION_IMPLEMENTATION.md     # Technical docs
+└── audio-transcription-cli/          # CLI application
+    ├── .env.example                 # Environment template
+    ├── pyproject.toml              # Package configuration
+    ├── requirements.txt            # Dependencies
+    ├── convert_mp3_to_wav.py       # MP3 conversion utility
+    ├── debug_audio.py              # Audio debugging tool
     ├── src/audio_transcription/
-    │   ├── cli.py           # CLI interface
-    │   ├── __main__.py      # Entry point
-    │   ├── config/          # Configuration
-    │   ├── core/            # Core processing
+    │   ├── cli.py                 # CLI interface
+    │   ├── __main__.py            # Entry point
+    │   ├── config/
+    │   │   └── settings.py       # Configuration
+    │   ├── core/                  # Core processing
     │   │   ├── audio_processor.py
     │   │   ├── transcription.py
     │   │   └── diarization.py
-    │   └── utils/           # Utilities
-    ├── scripts/             # Utility scripts
-    │   ├── convert_mp3_to_wav.py
-    │   └── debug_audio.py
-    ├── examples/            # Sample audio files
-    ├── output/              # Generated files
-    │   ├── transcriptions/
-    │   └── diarizations/
-    ├── logs/                # Application logs
-    └── tests/               # Test suite
+    │   └── utils/                 # Utilities
+    │       ├── file_handler.py
+    │       └── logger.py
+    └── tests/                      # Test suite
 ```
 
 ### Key Technologies
@@ -356,7 +350,8 @@ audio-transcription transcribe audio.wav --model large-v2
 **Issue: MP3 files not loading correctly**
 ```bash
 # Solution: Convert to WAV first
-python cli/scripts/convert_mp3_to_wav.py audio/problematic.mp3
+cd audio-transcription-cli
+python convert_mp3_to_wav.py audio/problematic.mp3
 ```
 
 ### Debug Mode
@@ -410,7 +405,7 @@ Contributions are welcome! Please feel free to submit pull requests, report bugs
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/transcribe-backend.git
+git clone https://github.com/TharanaBope/transcribe-backend.git
 cd transcribe-backend/audio-transcription-cli
 
 # Install development dependencies
@@ -450,16 +445,15 @@ If you use this project in your research, please cite:
 ```bibtex
 @software{audio_transcription_cli,
   title = {Audio Transcription & Diarization CLI},
-  author = {Your Name},
+  author = {TharanaBope},
   year = {2025},
-  url = {https://github.com/yourusername/transcribe-backend}
+  url = {https://github.com/TharanaBope/transcribe-backend}
 }
 ```
 
 ## Contact
 
-- GitHub Issues: [Report a bug](https://github.com/yourusername/transcribe-backend/issues)
-- Email: your.email@example.com
+- GitHub Issues: [Report a bug](https://github.com/TharanaBope/transcribe-backend/issues)
 
 ---
 

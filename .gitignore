@@ -22,7 +22,7 @@ env/
 ENV/
 **/venv/
 **/.venv/
-cli/venv/
+audio-transcription-cli/venv/
 
 # Tool caches
 .mypy_cache/
@@ -39,22 +39,22 @@ htmlcov/
 
 # Logs and generated data
 *.log
-cli/logs/
-cli/output/
-cli/output/transcriptions/
-cli/output/diarizations/
+audio-transcription-cli/logs/
+audio-transcription-cli/transcriptions/
+audio-transcription-cli/diarizations/
+audio-transcription-cli/output/
 
-# Sample/test audio files (add generic samples instead)
-cli/examples/*.mp3
-cli/examples/*.wav
-!cli/examples/sample.wav
+# Sample/test audio files
+audio-transcription-cli/audio/*.mp3
+audio-transcription-cli/audio/*.wav
+!audio-transcription-cli/audio/sample.wav
 
 # Environment and secrets
 .env
 .env.*
 *.env
-cli/.env
-!cli/.env.example
+audio-transcription-cli/.env
+!audio-transcription-cli/.env.example
 
 # IDE / editor settings
 .vscode/
