@@ -1,6 +1,5 @@
-# Deployment / runtime bundles
+# Deployment / runtime bundles (private production server)
 Prod/
-audio/
 
 # Python cache files
 __pycache__/
@@ -23,7 +22,7 @@ env/
 ENV/
 **/venv/
 **/.venv/
-audio-transcription-cli/venv/
+cli/venv/
 
 # Tool caches
 .mypy_cache/
@@ -40,15 +39,22 @@ htmlcov/
 
 # Logs and generated data
 *.log
-audio-transcription-cli/logs/
-audio-transcription-cli/transcriptions/
-audio-transcription-cli/diarizations/
+cli/logs/
+cli/output/
+cli/output/transcriptions/
+cli/output/diarizations/
+
+# Sample/test audio files (add generic samples instead)
+cli/examples/*.mp3
+cli/examples/*.wav
+!cli/examples/sample.wav
 
 # Environment and secrets
 .env
 .env.*
 *.env
-audio-transcription-cli/.env
+cli/.env
+!cli/.env.example
 
 # IDE / editor settings
 .vscode/
