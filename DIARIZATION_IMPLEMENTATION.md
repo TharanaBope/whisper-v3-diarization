@@ -10,23 +10,17 @@ Used **WhisperX** library to add speaker diarization capability on top of Whispe
 
 ## Implementation Steps
 
-### 1. **Original System** ([Prod/app.py](Prod/app.py))
-   - Real-time WebSocket transcription service
-   - Uses: `openai/whisper-large-v3` model
-   - Features: Transcribes audio chunks in real-time
-   - **Limitation**: No speaker identification
-
-### 2. **Created CLI Application** ([audio-transcription-cli/](audio-transcription-cli/))
+### 1. **Created CLI Application** ([audio-transcription-cli/](audio-transcription-cli/))
    - Built separate batch processing system
    - Two-stage approach: Transcribe → Diarize
 
-### 3. **Transcription Stage** ([core/transcription.py](audio-transcription-cli/src/audio_transcription/core/transcription.py))
+### 2. **Transcription Stage** ([core/transcription.py](audio-transcription-cli/src/audio_transcription/core/transcription.py))
    - Uses standard Whisper model for transcription
    - Audio preprocessing: noise reduction, normalization
    - Chunked processing: 30s chunks with 5s overlap
    - Output: Plain text transcription
 
-### 4. **Diarization Stage** ([core/diarization.py](audio-transcription-cli/src/audio_transcription/core/diarization.py))
+### 3. **Diarization Stage** ([core/diarization.py](audio-transcription-cli/src/audio_transcription/core/diarization.py))
    - Uses WhisperX library
    - **4-Step Pipeline**:
      1. **Transcribe**: WhisperX model generates text
@@ -35,7 +29,7 @@ Used **WhisperX** library to add speaker diarization capability on top of Whispe
      4. **Assign**: Maps speakers to text segments
    - Output: Transcription with speaker labels (SPEAKER_00, SPEAKER_01, etc.)
 
-### 5. **Fallback Mechanism**
+### 4. **Fallback Mechanism**
    - WhisperX has compatibility issues with some audio
    - Implemented fallback: sentence-based speaker assignment
    - Uses standard transcription + time-based speaker rotation
