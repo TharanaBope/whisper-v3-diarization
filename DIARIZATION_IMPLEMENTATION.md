@@ -1,5 +1,7 @@
 # Speaker Diarization Implementation Guide
 
+> **Note**: This implementation guide describes the core diarization system used by **both CLI and GUI interfaces**. The processing logic is shared between both interfaces through the `audio-transcription-cli/src/audio_transcription/core/` modules.
+
 ## Problem
 OpenAI's Whisper model can transcribe audio but **cannot identify different speakers** (speaker diarization).
 
@@ -10,9 +12,11 @@ Used **WhisperX** library to add speaker diarization capability on top of Whispe
 
 ## Implementation Steps
 
-### 1. **Created CLI Application** ([audio-transcription-cli/](audio-transcription-cli/))
-   - Built separate batch processing system
+### 1. **Created Core Processing System** ([audio-transcription-cli/src/audio_transcription/core/](audio-transcription-cli/src/audio_transcription/core/))
+   - Built shared processing modules used by both CLI and GUI
    - Two-stage approach: Transcribe → Diarize
+   - **CLI Interface**: Direct command-line access to core modules
+   - **GUI Interface**: FastAPI wrapper around core modules with SSE progress tracking
 
 ### 2. **Transcription Stage** ([core/transcription.py](audio-transcription-cli/src/audio_transcription/core/transcription.py))
    - Uses standard Whisper model for transcription
