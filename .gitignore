@@ -70,3 +70,6 @@ Thumbs.db
 .claude/
 
 Commands.txt
+
+# Terminal Paste Image folder
+.cp-images/
