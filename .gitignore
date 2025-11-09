@@ -1,5 +1,7 @@
 # Deployment / runtime bundles (private production server)
 Prod/
+errors/
+test-copy/
 
 # Python cache files
 __pycache__/

@@ -6,6 +6,13 @@ from typing import List, Optional
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
+# Add ffmpeg/ffprobe to PATH for WhisperX and audio processing
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except ImportError:
+    pass  # static_ffmpeg is optional, will use system ffmpeg if available
+
 from .core.audio_processor import AudioProcessor
 from .utils.logger import setup_logging
 from .config.settings import AppConfig
@@ -151,12 +158,12 @@ def diarize_audio(
     min_speakers: Optional[int] = typer.Option(
         None,
         "--min-speakers",
-        help="Minimum number of speakers (auto-detect if not specified)"
+        help="Minimum number of speakers (recommended to specify for better accuracy)"
     ),
     max_speakers: Optional[int] = typer.Option(
         None,
-        "--max-speakers", 
-        help="Maximum number of speakers (auto-detect if not specified)"
+        "--max-speakers",
+        help="Maximum number of speakers (recommended to specify for better accuracy)"
     ),
     language: Optional[str] = typer.Option(
         None,
@@ -258,12 +265,12 @@ def process_full(
     min_speakers: Optional[int] = typer.Option(
         None,
         "--min-speakers",
-        help="Minimum number of speakers"
+        help="Minimum number of speakers (recommended to specify for better accuracy)"
     ),
     max_speakers: Optional[int] = typer.Option(
         None,
         "--max-speakers",
-        help="Maximum number of speakers"
+        help="Maximum number of speakers (recommended to specify for better accuracy)"
     ),
     language: Optional[str] = typer.Option(
         None,
@@ -361,15 +368,31 @@ def _validate_speaker_counts(min_speakers: Optional[int], max_speakers: Optional
     if min_speakers is not None and min_speakers < 1:
         console.print("❌ [red]Minimum speakers must be at least 1[/red]")
         raise typer.Exit(1)
-    
+
     if max_speakers is not None and max_speakers < 1:
         console.print("❌ [red]Maximum speakers must be at least 1[/red]")
         raise typer.Exit(1)
-    
-    if (min_speakers is not None and max_speakers is not None and 
+
+    if (min_speakers is not None and max_speakers is not None and
         min_speakers > max_speakers):
         console.print("❌ [red]Minimum speakers cannot exceed maximum speakers[/red]")
         raise typer.Exit(1)
+
+    # Warn if speaker counts not specified (auto-detection may be less accurate)
+    if min_speakers is None and max_speakers is None:
+        console.print(
+            "⚠️  [yellow]Warning: Speaker counts not specified. "
+            "Auto-detection will be used, which may be less accurate.[/yellow]"
+        )
+        console.print(
+            "💡 [cyan]Tip: For better accuracy, specify speaker bounds with "
+            "--min-speakers and --max-speakers[/cyan]"
+        )
+    elif min_speakers is None or max_speakers is None:
+        console.print(
+            "⚠️  [yellow]Warning: Only one speaker bound specified. "
+            "Consider specifying both --min-speakers and --max-speakers for best results.[/yellow]"
+        )
 
 
 if __name__ == "__main__":
